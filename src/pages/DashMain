@@ -1,0 +1,339 @@
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import CustomConfirmModal from "../components/CustomConfirmModal";
+
+
+
+function DashboardPage() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [checkedIn, setCheckedIn] = useState(false);
+  const [checkedOut, setCheckedOut] = useState(false);
+  const [note, setNote] = useState("");
+  const [logId, setLogId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  useEffect(() => {
+    const init = async () => {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        await checkStatus(parsedUser);
+      }
+      setLoading(false); // hide loader after check
+    };
+    init();
+  }, []);
+
+  const notify = (message, type = "default") => {
+    toast(message, {
+      type,
+      position: "top-right",
+      autoClose: 3000,
+      hideProgressBar: false,
+      pauseOnHover: true,
+      draggable: true,
+      theme: "colored",
+    });
+  };
+
+  const isToday = (dateString) => {
+    const today = new Date();
+    const date = new Date(dateString);
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
+  const checkStatus = async (userdata) => {
+    try {
+      const response = await fetch("http://localhost:8000/api/checkStatus", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ id: userdata.id }),
+      });
+
+      const data = await response.json();
+
+      if (data.status && data.record) {
+        const record = data.record;
+
+        // 👉 If user has taken leave (note = 'leave')
+        if (record.note && record.note.trim().toLowerCase() === "leave") {
+          setCheckedIn(true);
+          setCheckedOut(true);
+          setLogId(null);
+          setNote("leave"); // store note so we can disable buttons based on it
+          localStorage.removeItem("log_id");
+          localStorage.removeItem("checkInData");
+          notify("You're on leave today 🌴", "info");
+          return; // stop further logic
+        }
+
+        // 👉 If login_time is today, mark as checked in
+        if (isToday(record.login_time)) {
+          setCheckedIn(true);
+          setCheckedOut(!!record.logout_time);
+          setLogId(data.log_id);
+          setNote(record.note || ""); // save note if any
+          localStorage.setItem("log_id", data.log_id);
+          localStorage.setItem("checkInData", JSON.stringify(record));
+        } else {
+          // No record for today
+          setCheckedIn(false);
+          setCheckedOut(false);
+          setLogId(null);
+          setNote("");
+          localStorage.removeItem("log_id");
+          localStorage.removeItem("checkInData");
+        }
+      } else {
+        setCheckedIn(false);
+        setCheckedOut(false);
+        setLogId(null);
+        setNote("");
+        localStorage.removeItem("log_id");
+        localStorage.removeItem("checkInData");
+      }
+
+      notify(data.message || "Status checked", "info");
+    } catch (err) {
+      console.error("Error in checkStatus:", err);
+      notify("Error checking in status", "error");
+    }
+  };
+
+  const handleCheckIn = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/check-in", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ id: user?.id }),
+      });
+
+      const data = await response.json();
+      if (data.status) {
+        notify("✅ Checked in successfully", "success");
+        setCheckedIn(true);
+        setLogId(data.log_id);
+        localStorage.setItem("log_id", data.log_id);
+      } else {
+        notify("❌ Check-in failed", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      notify("❗ Check-in error", "error");
+    }
+  };
+
+  const handleCheckOut = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/check-out", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ log_id: logId }),
+      });
+
+      const data = await response.json();
+      if (data.status) {
+        notify("✅ Checked out successfully", "success");
+        setCheckedOut(true);
+      } else {
+        notify("❌ Check-out failed", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      notify("❗ Check-out error", "error");
+    }
+  };
+
+  const handleSaveNote = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/save-note", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          log_id: logId,
+          note: note,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.status) {
+        notify("📝 Note saved successfully", "success");
+        setNote("");
+      } else {
+        notify("❌ Failed to save note", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      notify("❗ Error saving note", "error");
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/login");
+  };
+
+  const handleLeave = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/take-leave", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ id: user?.id }),
+      });
+
+      const data = await response.json();
+      if (data.status) {
+        notify("🌴 Leave marked successfully", "success");
+        setCheckedIn(true);
+        setCheckedOut(true);
+        localStorage.removeItem("log_id");
+        localStorage.removeItem("checkInData");
+      } else {
+        notify(data.message || "❌ Failed to mark leave", "error");
+      }
+    } catch (err) {
+      console.error("Leave request error:", err);
+      notify("❗ Error while requesting leave", "error");
+    }
+  };
+
+  const handleTakeLeave = () => {
+    setShowConfirmModal(true);
+  };
+
+  const confirmTakeLeave = () => {
+    setShowConfirmModal(false);
+    handleLeave(); // call actual logic here
+  };
+
+  const cancelTakeLeave = () => {
+    setShowConfirmModal(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600">
+        <div className="text-white text-xl font-semibold animate-pulse">
+          Loading...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-6">
+      <ToastContainer />
+      <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-lg">
+        <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">
+          Welcome, {user?.name}
+        </h2>
+
+        <div className="text-center">
+          {!checkedIn && !checkedOut ? (
+            <button
+              onClick={handleCheckIn}
+              className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition duration-200"
+            >
+              Check In
+            </button>
+          ) : checkedIn && !checkedOut ? (
+            <button
+              onClick={handleCheckOut}
+              className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition duration-200"
+            >
+              Check Out
+            </button>
+          ) : (
+            <p className="text-lg font-medium text-gray-700">
+              You’re done for today 🎉
+            </p>
+          )}
+        </div>
+
+        {/* Note section */}
+        {checkedIn && !checkedOut && (
+          <div className="mt-6">
+            <textarea
+              className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-400 outline-none"
+              placeholder="Write your note here (optional)..."
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={4}
+            ></textarea>
+            <button
+              onClick={handleSaveNote}
+              className="mt-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg shadow transition duration-200"
+            >
+              Save Note
+            </button>
+          </div>
+        )}
+
+        {/* Logout */}
+        <div className="mt-8 text-center">
+          <button
+            onClick={handleLogout}
+            className="bg-gray-700 hover:bg-gray-800 text-white font-medium px-5 py-2 rounded-lg transition"
+          >
+            Logout
+          </button>
+        </div>
+
+        {/* Show Take Leave only if not checked in or out */}
+        {!checkedIn && !checkedOut && (
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={handleTakeLeave}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white font-medium px-4 py-2 rounded-lg shadow transition duration-200"
+            >
+              Take Leave
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 text-center">
+        <button
+          onClick={() => navigate("/records")}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2 rounded-lg shadow transition"
+        >
+          Show Records
+        </button>
+      </div>
+
+      {showConfirmModal && (
+        <CustomConfirmModal
+          message="Are you sure you want to take leave for today?"
+          onConfirm={confirmTakeLeave}
+          onCancel={cancelTakeLeave}
+        />
+      )}
+    </div>
+  );
+}
+
+export default DashboardPage;
