@@ -7,7 +7,7 @@ const CustomConfirmModal = forwardRef(
     return (
       <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
         <div
-          ref={ref} // 👈 Move the ref here
+          ref={ref} 
           className="bg-white p-6 rounded-2xl shadow-lg text-center max-w-md w-full"
         >
           <h2 className="text-lg font-semibold mb-4">{message}</h2>

@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { clearUserStore, getUser } from "../indexedDB";
 import { API } from "../utils/common";
 import axios from "axios";
+import DraggableCircle from "./FloatingCircle";
+import { useTranslation } from "react-i18next";
 
 function Layout({ children }) {
   const [isOpen, setIsOpen] = useState(true);
@@ -21,13 +23,25 @@ function Layout({ children }) {
     fetchPendingCount(get.access_token);
   };
 
-  console.log(user);
-
   const handleLogout = async () => {
-    console.log("logout");
     await clearUserStore();
     navigate("/login");
   };
+
+  function Welcome() {
+    const { t, i18n } = useTranslation();
+
+    const changeLanguage = (lng) => {
+      i18n.changeLanguage(lng);
+    };
+    return (
+      <div>
+        <h1>{t("welcome")}</h1>
+        <button onClick={() => changeLanguage("en")}>English</button>
+        <button onClick={() => changeLanguage("hi")}>Hindi</button>
+      </div>
+    );
+  }
 
   const isActive = (path) =>
     location.pathname === path || location.pathname.startsWith(path);
@@ -60,8 +74,28 @@ function Layout({ children }) {
     }
   };
 
+  const getPageTitle = (path) => {
+    if (path === "/dashboard") return "Dashboard";
+    if (path.startsWith("/attendance")) return "  📅 Attendance";
+    if (path === "/employees") return "Employee List";
+    if (path === "/assign-task") return "Assign Task";
+    if (path === "/assigned-task")
+      return "Task Details  (By assigned date)";
+    if (path === "/leave-holidays") return "Leave & Holidays";
+    if (path === "/profile") return "Profile";
+    return "Dashboard";
+  };
+
   return (
     <div className="flex min-h-screen">
+      {user.role === "Employee" && (
+        <DraggableCircle
+          initialTop={100}
+          initialLeft={200}
+          size={80}
+          color="blue"
+        />
+      )}
       {/* Sidebar */}
       <div
         className={`bg-indigo-500 text-white transition-all duration-300 ${
@@ -98,6 +132,16 @@ function Layout({ children }) {
               Employees
             </Link>
           )}
+          {user.role === "Admin" && (
+            <Link
+              to="/assign-task"
+              className={`block px-4 py-2 hover:bg-gray-700 ${
+                isActive("/assign-task") ? "bg-gray-700 font-semibold" : ""
+              }`}
+            >
+              Assign Task
+            </Link>
+          )}
           {user.role != "Admin" && (
             <Link
               to="/attendance"
@@ -116,21 +160,41 @@ function Layout({ children }) {
           >
             Leave & Holidays
           </Link> */}
-          <div className="relative inline-block">
+
+          {user.role != "Admin" && (
             <Link
-              to="/leave-holidays"
+              to="/assigned-task"
               className={`block px-4 py-2 hover:bg-gray-700 ${
-                isActive("/leave-holidays") ? "bg-gray-700 font-semibold" : ""
+                isActive("/assigned-task") ? "bg-gray-700 font-semibold" : ""
               }`}
             >
-              Leave & Holidays
+              Assigned Task
             </Link>
+          )}
+          {/* <div className="relative inline-block"> */}
+          <Link
+            to="/leave-holidays"
+            className={`block px-4 py-2 hover:bg-gray-700 ${
+              isActive("/leave-holidays") ? "bg-gray-700 font-semibold" : ""
+            }`}
+          >
+            <span>Leave & Holidays</span>
+
             {user.role === "Admin" && pendingCount > 0 && (
-              <span className="absolute top-1 right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+              <span
+                className="ml-2 inline-block bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full"
+                style={{ minWidth: "20px", textAlign: "center" }}
+              >
                 {pendingCount}
               </span>
             )}
-          </div>
+          </Link>
+          {/* {user.role === "Admin" && pendingCount > 0 && (
+              <span className="absolute top-1 right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                {pendingCount}
+              </span>
+            )} */}
+          {/* </div> */}
           <Link
             to="/profile"
             className={`block px-4 py-2 hover:bg-gray-700 ${
@@ -160,8 +224,11 @@ function Layout({ children }) {
 
       {/* Main Content with Header */}
       <div className="flex-1 bg-gray-100">
-        {/* Header */}
-        <div className="relative flex justify-end items-center p-4 bg-white shadow">
+        <div className="relative flex justify-between items-center p-4 bg-white shadow">
+          <h1 className="text-3xl font-bold text-gray-800">
+            {getPageTitle(location.pathname)}
+          </h1>
+          {/* <Welcome /> */}
           <div className="relative" ref={dropdownRef}>
             {/* {user?.profile ? (
               <img
@@ -171,12 +238,12 @@ function Layout({ children }) {
                 onClick={() => setShowProfile(!showProfile)}
               />
             ) : ( */}
-              <div
-                className="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold cursor-pointer shadow-md"
-                onClick={() => setShowProfile(!showProfile)}
-              >
-                {user?.initials}
-              </div>
+            <div
+              className="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold cursor-pointer shadow-md"
+              onClick={() => setShowProfile(!showProfile)}
+            >
+              {user?.initials}
+            </div>
             {/* )} */}
 
             {showProfile && (

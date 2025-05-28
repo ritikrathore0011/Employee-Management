@@ -1,8 +1,8 @@
 import { toast } from "react-toastify";
 import axios from "axios";
+import { useEffect } from "react";
 
-// exports
-export const API = 'http://localhost:8000/api';
+export const API = "http://localhost:8000/api";
 
 export const notify = (message, type = "default") => {
   toast(message, {
@@ -31,19 +31,35 @@ export const fetchHolidays = async () => {
 };
 
 export function getInitials(sentence) {
-  sentence = sentence.trim(); // remove leading/trailing whitespace
+  sentence = sentence.trim();
 
-  const firstLetter = sentence[0]?.toUpperCase() || '';
+  const firstLetter = sentence[0]?.toUpperCase() || "";
 
-  const spaceIndex = sentence.indexOf(' ');
-  const secondLetter = spaceIndex !== -1 && sentence[spaceIndex + 1]
+  const spaceIndex = sentence.indexOf(" ");
+  const secondLetter =
+    spaceIndex !== -1 && sentence[spaceIndex + 1]
       ? sentence[spaceIndex + 1].toUpperCase()
-      : '';
+      : "";
 
   return firstLetter + secondLetter;
 }
 
+export function useOutsideClick(ref, callback, active = true) {
+  useEffect(() => {
+    if (!active) return;
 
+    const handleClickOutside = (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        callback();
+      }
+    };
 
+    document.addEventListener("mousedown", handleClickOutside);
 
-export default { API, notify ,fetchHolidays, getInitials }; 
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [ref, callback, active]);
+}
+
+export default { API, notify, fetchHolidays, getInitials, useOutsideClick };

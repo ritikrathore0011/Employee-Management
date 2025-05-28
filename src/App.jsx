@@ -1,3 +1,4 @@
+import './i18n/i18n';
 import React from "react";
 import {
   BrowserRouter as Router,
@@ -13,12 +14,16 @@ import Employees from "./pages/Employees";
 import Layout from "./components/Layout";
 import ProfilePage from "./pages/ProfilePage";
 import AttendancePage from "./pages/Attendance";
+import AttendanceDetail from "./pages/AttendanceDetailSheet";
 import LeaveAndHolidaysPage from "./pages/LeaveAndHolidays";
 import EventsPage from "./pages/Events";
 import PayrollPage from "./pages/Payroll";
 import Unauthorized from "./pages/Unauthorized";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import AssignTask from "./pages/AssignTask";
+import AssignedTask from "./pages/AssignedTask";
+
 
 function App() {
   return (
@@ -41,7 +46,7 @@ function App() {
             </PublicRoute>
           }
         />
-      
+
         {/* 👈 new route */}
         <Route
           path="/dashboard"
@@ -66,6 +71,16 @@ function App() {
           }
         />
         <Route
+          path="/assign-task"
+          element={
+            <PrivateRoute requiredRole="Admin">
+              <Layout>
+                <AssignTask />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+        <Route
           path="/profile"
           element={
             <PrivateRoute>
@@ -78,9 +93,30 @@ function App() {
         <Route
           path="/attendance"
           element={
-            <PrivateRoute requiredRole="Employee">
+            <PrivateRoute requiredRole="Employee" >
               <Layout>
                 <AttendancePage />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+         <Route
+          path="/attendance/:id"
+
+          element={
+            <PrivateRoute requiredRole="Admin" >
+              <Layout>
+                <AttendanceDetail />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+         <Route
+          path="/assigned-task"
+          element={
+            <PrivateRoute requiredRole="Employee">
+              <Layout>
+                <AssignedTask />
               </Layout>
             </PrivateRoute>
           }

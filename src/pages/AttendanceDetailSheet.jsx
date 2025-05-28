@@ -1,191 +1,51 @@
 import React, { useEffect, useRef, useState } from "react";
-import { API, notify, fetchHolidays, useOutsideClick } from "../utils/common";
+import { API, notify, fetchHolidays } from "../utils/common";
 import { ToastContainer, toast } from "react-toastify";
-import { addUser, getUser } from "../indexedDB";
 import * as XLSX from "xlsx";
 import { X, Eye } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { getUser } from "../indexedDB";
+import { useLocation } from "react-router-dom";
 
-export default function AttendancePage() {
+export default function AttendanceDetailSheet() {
   const [user, setUser] = useState(null);
-  const [checkedIn, setCheckedIn] = useState(false);
-  const [checkedOut, setCheckedOut] = useState(false);
-  const [note, setNote] = useState("");
   const [eod, setEod] = useState("");
-  const [logId, setLogId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
   const [token, setToken] = useState("");
-  const [summary, setSummary] = useState("");
-  const [holidays, setHolidays] = useState([]);
-  const [forCheck, setForcheck] = useState(false);
-  const [isViewSheet, setIsViewSheet] = useState(false);
   const [isUpdateModal, setIsUpdateModal] = useState(false);
   const [selectedUpdate, setSelectedUpdate] = useState("");
   const inputRef = useRef(null);
-  const modalRef = useRef(null);
+  const { id } = useParams();
+  const location = useLocation();
+  const name = location.state?.name;
+
+
+
+
+  console.log(name);
 
   const handleClick = () => {
     if (inputRef.current?.showPicker) {
       inputRef.current.showPicker();
     }
   };
-
   useEffect(() => {
     init();
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      fetchRecords();
-    }
-  }, [user, checkedIn, checkedOut]);
-
   const init = async () => {
     const storedUser = await getUser("user");
     if (storedUser) {
-      setUser(storedUser);
       setToken(storedUser.access_token);
-      await checkStatus(storedUser.access_token);
-      const data = await fetchHolidays();
-      setHolidays(data);
+      setUser(storedUser); // Set the user in the global state
+      fetchRecords(null, null, storedUser.access_token);
     }
-    setLoading(false);
+    setLoading(false); // hide loader after check
   };
 
-  const checkStatus = async (token) => {
-    try {
-      const response = await fetch(`${API}/checkStatus`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.status && data.record) {
-        const record = data.record;
-        console.log(record);
-        if (record.note && !record.login_time && !record.logout_time) {
-          console.log("yes leave ");
-          notify("You're on leave today 🌴", "info");
-          return;
-        }
-
-        if (record.login_time) {
-          setCheckedIn(true);
-          setCheckedOut(!!record.logout_time);
-          setLogId(data.log_id);
-          setNote(record.note || "");
-        } else {
-          setCheckedIn(false);
-          setCheckedOut(false);
-          setLogId(null);
-          setNote("");
-        }
-      } else {
-        setCheckedIn(false);
-        setCheckedOut(false);
-        setLogId(null);
-        setNote("");
-      }
-      notify(data.message || "Status checked", "info");
-    } catch (err) {
-      notify(err.message || "Error in checkStatus", "error");
-    }
-  };
-
-  const handleCheckIn = async () => {
-    try {
-      setForcheck(true);
-      const response = await fetch(`${API}/check-in`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-      if (data.status) {
-        notify("✅ Checked in successfully", "success");
-        setCheckedIn(true);
-        setLogId(data.log_id);
-      } else {
-        notify("❌ Check-in failed", "error");
-      }
-    } catch (err) {
-      notify("❗ Check-in error", "error");
-    } finally {
-      setForcheck(false);
-    }
-  };
-
-  const handleCheckOut = async () => {
-    try {
-      setForcheck(true);
-      const response = await fetch(`${API}/check-out`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          log_id: logId,
-          // note: note,
-          eod: eod,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.status) {
-        notify("✅ Checked out successfully", "success");
-        setCheckedOut(true);
-      } else {
-        notify("❌ Check-out failed", "error");
-      }
-    } catch (err) {
-      console.warning(err);
-      notify("❗ Check-out error", "error");
-    } finally {
-      setForcheck(true);
-    }
-  };
-
-  // const handleSaveNote = async () => {
-  //   try {
-  //     const response = await fetch(`${API}/save-note`, {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Accept: "application/json",
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //       body: JSON.stringify({
-  //         log_id: logId,
-  //         note: note,
-  //       }),
-  //     });
-
-  //     const data = await response.json();
-  //     if (data.status) {
-  //       notify("📝 Note saved successfully", "success");
-  //       setNote("");
-  //     } else {
-  //       notify("❌ Failed to save note", "error");
-  //     }
-  //   } catch (err) {
-  //     console.warning(err);
-  //     notify("❗ Error saving note", "error");
-  //   }
-  // };
-
-  const fetchRecords = async (year = null, month = null) => {
-    // setLoading(true);
+  const fetchRecords = async (year = null, month = null, token) => {
+    setLoading(true);
     try {
       const payload = {};
 
@@ -193,8 +53,9 @@ export default function AttendancePage() {
         payload.year = year;
         payload.month = month;
       }
+      payload.id = id;
 
-      const response = await fetch(`${API}/records`, {
+      const response = await fetch(`${API}/detailed-sheet`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -220,46 +81,9 @@ export default function AttendancePage() {
       console.warning(err);
       toast.error("Error fetching records");
     } finally {
-      // setLoading(false);
+      setLoading(false);
     }
   };
-
-  // const hadleMonthSummary = async (token) => {
-  //   try {
-  //     const response = await fetch(`${API}/summary`, {
-  //       method: "GET",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Accept: "application/json",
-  //         Authorization: `Bearer ${token}`,
-  //       },
-  //       // body: JSON.stringify({
-  //       //   name: holidayName,
-  //       //   date: holidayDate,
-  //       // }),
-  //     });
-
-  //     const data = await response.json();
-  //     if (data.status) {
-  //       notify("Holiday added successfully!", "success");
-  //       // Clear the form
-  //       setHolidayName("");
-  //       setHolidayDate("");
-
-  //       setTimeout(() => {
-  //         fetchHolidays();
-  //       }, 300); // 300ms delay
-  //     } else {
-  //       // toast.error(data.message || "Failed to add holiday.");
-  //       notify(data.message, data.status ? "success" : "error");
-  //     }
-  //   } catch (err) {
-  //     console.error(err);
-  //     notify("Error adding holiday.", "error");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const calculateHoursWorked = (loginTime, logoutTime) => {
     const login = new Date(loginTime);
@@ -279,30 +103,13 @@ export default function AttendancePage() {
     return `${hours}h ${minutes}m`;
   };
 
-  // const [selectedDate, setSelectedDate] = useState(() => {
-  //   const today = new Date();
-  //   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
-  //     2,
-  //     "0"
-  //   )}`;
-  // });
-
-  const getCurrentMonth = () => {
+  const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
       2,
       "0"
     )}`;
-  };
-  const [selectedDate, setSelectedDate] = useState(getCurrentMonth);
-
-  const isCurrentMonth = (() => {
-    const today = new Date();
-    const currentMonth = `${today.getFullYear()}-${String(
-      today.getMonth() + 1
-    ).padStart(2, "0")}`;
-    return selectedDate === currentMonth;
-  })();
+  });
 
   const formatTime = (timeString) => {
     if (!timeString) return "";
@@ -319,7 +126,6 @@ export default function AttendancePage() {
       Login: formatTime(record.login_time),
       Logout: formatTime(record.logout_time),
       Note: record.note,
-      EOD: record.eod,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -334,14 +140,9 @@ export default function AttendancePage() {
 
     if (!isUpdateModal) return null;
 
-    useOutsideClick(modalRef, onClose, isUpdateModal);
-
     return (
       <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center px-4">
-        <div
-          ref={modalRef}
-          className="bg-white w-full max-w-md rounded-lg shadow-lg overflow-hidden"
-        >
+        <div className="bg-white w-full max-w-md rounded-lg shadow-lg overflow-hidden">
           <div className="flex justify-between items-center px-4 py-3 border-b bg-gray-100">
             <h2 className="text-lg font-semibold text-gray-800">
               Daily Update
@@ -386,11 +187,11 @@ export default function AttendancePage() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 p-6 relative">
       <ToastContainer />
       <div className="flex">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4 flex-1"></h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-4 flex-1">
+          {name}
+        </h1>
         <div className="flex items-center justify-end mb-4 space-x-2">
-          <label htmlFor="date" className="font-medium text-gray-700">
-            {/* Filter by Month & Year: */}
-          </label>
+          <label htmlFor="date" className="font-medium text-gray-700"></label>
           <input
             ref={inputRef}
             type="month"
@@ -405,7 +206,7 @@ export default function AttendancePage() {
             onClick={() => {
               if (selectedDate) {
                 const [year, month] = selectedDate.split("-");
-                fetchRecords(parseInt(year), parseInt(month));
+                fetchRecords(parseInt(year), parseInt(month),token);
               } else {
                 toast.warn("Please select a date first.");
               }
@@ -413,107 +214,37 @@ export default function AttendancePage() {
           >
             Search
           </button>
-          {!isCurrentMonth && (
-            <button
-              className="bg-gray-300 text-gray-700 px-3 py-1 rounded hover:bg-gray-400"
-              onClick={() => {
-                setSelectedDate(getCurrentMonth);
-                fetchRecords(); // fetch current month data again
-              }}
-            >
-              Clear
-            </button>
-          )}
+          <button
+            className="bg-gray-300 text-gray-700 px-3 py-1 rounded hover:bg-gray-400"
+            onClick={() => {
+              setSelectedDate("");
+              fetchRecords(); 
+            }}
+          >
+            Clear
+          </button>
         </div>
       </div>
       <div className="max-w-6xl mx-auto flex flex-col gap-8">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Check-In Panel */}
-          <div className="bg-green-50 border border-green-200 hover:bg-green-100 rounded-2xl p-6 shadow-lg shadow-green-100 transform transition-all duration-300 hover:scale-105 hover:shadow-xl group relative overflow-hidden">
-            <h2 className="text-2xl font-bold text-center text-green-700 mb-4">
-              Check-In Panel
-            </h2>
-
-            <div className="text-center">
-              {checkedIn && !checkedOut && (
-                <div className="mt-6">
-                  <textarea
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-400 outline-none"
-                    placeholder="Write your Daily Update here."
-                    value={eod}
-                    onChange={(e) => setEod(e.target.value)}
-                    rows={4}
-                  ></textarea>
-                </div>
-              )}
-
-              {!checkedIn && !checkedOut ? (
-                <button
-                  onClick={handleCheckIn}
-                  disabled={forCheck}
-                  className="mt-4 bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition duration-200"
-                >
-                  {forCheck ? "Checking In..." : "Check In"}
-                </button>
-              ) : checkedIn && !checkedOut ? (
-                <button
-                  onClick={handleCheckOut}
-                  disabled={forCheck}
-                  className="mt-4 bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg shadow-md transition duration-200"
-                >
-                  {forCheck ? "Checking Out..." : "Check Out"}
-                </button>
-              ) : (
-                <div className="mt-4 bg-green-100 text-green-800 px-6 py-3 rounded-xl shadow border border-green-300">
-                  <p className="text-lg font-semibold">
-                    You’ve done for today 🎉
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Monthly Summary */}
-          <div className="bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-2xl p-6 shadow-lg shadow-blue-100 transform transition-all duration-300 hover:scale-105 hover:shadow-xl group">
-            <h3 className="text-xl font-semibold text-blue-800 mb-4">
-              This Month's Summary
-            </h3>
-            <ul className="text-sm space-y-1 text-blue-700">
-              <li>Total Days: {summary.total_days}</li>
+        <div className="flex gap-4">
+          {/* Summary Section */}
+          {/* <div className="grid grid-cols-2 gap-4 flex-1"> */}
+          {/* <div className="bg-green-100 p-4 rounded-xl shadow flex-1">
+            <h3 className="text-lg font-semibold mb-2">This Month's Summary</h3>
+            <ul className="text-sm space-y-1">
+              <li>Total Days: {summary.total_days} </li>
               <li>Present: {summary.present}</li>
               <li>Leaves: {summary.leaves}</li>
               <li>Late Logins: {summary.late_logins}</li>
               <li>Early Logouts: {summary.early_logouts}</li>
             </ul>
-          </div>
-
-          {/* Upcoming Holidays */}
-          <div className="bg-yellow-50 border border-yellow-200 hover:bg-yellow-100 rounded-2xl p-6 shadow-lg shadow-yellow-100 transform transition-all duration-300 hover:scale-105 hover:shadow-xl group">
-            <h3 className="text-xl font-semibold text-yellow-800 mb-4">
-              Upcoming Holidays
-            </h3>
-            <ul className="text-sm space-y-1 text-yellow-700">
-              {holidays?.length ? (
-                holidays.map((holiday) => (
-                  <li key={holiday.id}>
-                    {new Date(holiday.date).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                    })}{" "}
-                    - {holiday.title}
-                  </li>
-                ))
-              ) : (
-                <li>No holidays added</li>
-              )}
-            </ul>
-          </div>
+          </div> */}
         </div>
 
         <div className="bg-white shadow rounded-xl overflow-hidden">
           <div className="flex px-6 py-3 border-b pb-2 my-2">
             <h1 className=" flex-1 text-3xl font-bold text-blue-800 tracking-wide mb-4 ">
-              Attendance Sheet
+              Attendance Sheet 
             </h1>
             <button
               onClick={exportToExcel}

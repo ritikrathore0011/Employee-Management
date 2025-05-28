@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import { ToastContainer, toast } from "react-toastify";
-import { Link } from "react-router-dom";
 import { API, notify, getInitials } from "../utils/common";
 import { addUser, getUser } from "../indexedDB";
 import CustomConfirmModal from "../components/CustomConfirmModal";
+import { useNavigate } from "react-router-dom";
 
 function Employees() {
   const [records, setRecords] = useState([]);
@@ -21,6 +21,8 @@ function Employees() {
   const sumarryRef = useRef(null);
   const [summary, setSummary] = useState("");
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const navigate = useNavigate();
+  const[name, setName] = useState("");
 
   const [profile, setProfile] = useState({
     name: "",
@@ -293,7 +295,12 @@ function Employees() {
     )}`;
   });
 
-  console.log(selectedDate);
+const handleViewDetails = () => {
+  navigate(`/attendance/${id}`, {
+    state: { name },
+  });
+};
+
   if (loading)
     return (
       <div className="flex justify-center items-center h-screen">
@@ -304,7 +311,6 @@ function Employees() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 p-6">
       <ToastContainer />
-      <h1 className="text-3xl font-bold text-gray-800 mb-4">Employee Page</h1>
       <div className="flex justify-end mb-4">
         <button
           onClick={() => setShowModal(true)}
@@ -345,9 +351,9 @@ function Employees() {
                           className="w-10 h-10 rounded-full mx-auto"
                         />
                       ) : ( */}
-                        <div className="w-10 h-10 bg-blue-500 rounded-full mx-auto flex items-center justify-center text-white font-bold text-sm">
-                          {getInitials(record.name)}
-                        </div>
+                      <div className="w-10 h-10 bg-blue-500 rounded-full mx-auto flex items-center justify-center text-white font-bold text-sm">
+                        {getInitials(record.name)}
+                      </div>
                       {/* )} */}
                     </td>
 
@@ -366,6 +372,7 @@ function Employees() {
                       <button
                         onClick={() => {
                           setId(record.id);
+                          setName(record.name);
                           setShowSummary(true);
                           // hadleMonthSummary(record.id);
                           hadleMonthSummary(record.id);
@@ -420,7 +427,6 @@ function Employees() {
             ></CustomConfirmModal>
           )}
 
-
           {showSummary && (
             <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
               <div
@@ -471,17 +477,25 @@ function Employees() {
                 </div>
 
                 {/* Summary Info */}
-                <h3 className="text-lg font-semibold mb-4 text-blue-700">
-                  {selectedDate
-                    ? `Summary for ${new Date(selectedDate).toLocaleString(
-                        "default",
-                        {
-                          month: "long",
-                          year: "numeric",
-                        }
-                      )}`
-                    : "This Month's Summary"}
-                </h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold mb-4 text-blue-700">
+                    {selectedDate
+                      ? `Summary for ${new Date(selectedDate).toLocaleString(
+                          "default",
+                          {
+                            month: "long",
+                            year: "numeric",
+                          }
+                        )}`
+                      : "This Month's Summary"}
+                  </h3>
+                  <button
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition duration-300"
+                    onClick={handleViewDetails}
+                  >
+                    View details
+                  </button>
+                </div>
 
                 {loadingSummary ? (
                   <div className="flex items-center justify-center py-10">
@@ -517,11 +531,11 @@ function Employees() {
                 )}
                 <button
                   className="mt-6 w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                  onClick={() =>{ setShowSummary(false);
+                  onClick={() => {
+                    setShowSummary(false);
                     setSummary({});
                     setSelectedDate(null);
                   }}
-
                 >
                   Close
                 </button>

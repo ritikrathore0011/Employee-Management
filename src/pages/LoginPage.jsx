@@ -58,17 +58,19 @@ function LoginPage() {
   const handleGoogleLogin = async (credentialResponse) => {
     setIsFetching(true);
     try {
-      // 1. Extract Google ID Token
       const googleIdToken = credentialResponse.credential;
-
-      // 2. Send ID token to Laravel backend to authenticate
       const res = await axios.post(`${API}/auth/google-login`, {
         token: googleIdToken,
       });
 
-      const { user } = res.data;
+      if (res.data.status === false) {
+        setIsFetching(false);
+        notify(res.data.message || "You are not verified! contact admin.", "error");
+        return;
+      }
 
-      // 3. Store backend token & user
+      
+      const { user } = res.data;
       await addUser({ id: "user", ...user });
       setIsFetching(false);
       notify(`Welcome ${user.name}`, "success");
@@ -93,79 +95,7 @@ function LoginPage() {
             <h2 className="text-4xl font-bold mb-6">
               Employee Management System
             </h2>
-            {/* <p className="text-blue-100 text-lg mb-8 leading-relaxed">
-              Streamline your workforce management with our comprehensive
-              solution.
-            </p>
-
-            <div className="hidden md:block space-y-6 mt-16">
-              <div className="flex items-start space-x-3">
-                <div className="bg-blue-500 bg-opacity-30 p-2 rounded-lg">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Streamlined Management</h3>
-                  <p className="text-blue-200 text-sm">
-                    Handle employee data with ease and efficiency
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-3">
-                <div className="bg-blue-500 bg-opacity-30 p-2 rounded-lg">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold">Performance Analytics</h3>
-                  <p className="text-blue-200 text-sm">
-                    Track metrics and drive productivity
-                  </p>
-                </div>
-              </div>
-            </div> */}
-          </div>
-
-          {/* <div className="hidden md:block">
-            <div className="bg-blue-500 bg-opacity-30 p-6 rounded-xl">
-              <p className="italic text-sm mb-3">
-                "This system has transformed how we manage our team and
-                streamlined our entire HR workflow."
-              </p>
-              <div className="flex items-center">
-                <div className="h-8 w-8 bg-blue-200 rounded-full mr-2"></div>
-                <div>
-                  <p className="font-semibold text-sm">Sarah Johnson</p>
-                  <p className="text-xs text-blue-200">HR Director, TechCorp</p>
-                </div>
-              </div>
-            </div>
-          </div> */}
+          </div>         
         </div>
 
         {/* Right Section - Login Form */}
@@ -217,7 +147,7 @@ function LoginPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" >
             <div>
               <label
                 htmlFor="email"
@@ -278,7 +208,7 @@ function LoginPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center">
+              {/* <div className="flex items-center">
                 <input
                   id="remember-me"
                   name="remember_me"
@@ -291,7 +221,7 @@ function LoginPage() {
                 >
                   Remember me
                 </label>
-              </div>
+              </div> */}
               <div className="text-sm">
                 <Link
                   to="/forgot-password"
