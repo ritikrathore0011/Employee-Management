@@ -3,13 +3,12 @@ import axios from "axios";
 import { API, notify, fetchHolidays, useOutsideClick } from "../utils/common";
 import { ToastContainer, toast } from "react-toastify";
 import { addUser, getUser } from "../indexedDB";
-import DataTable from "react-data-table-component";
 
 export default function LeaveAndHolidaysPage() {
   const [leaveType, setLeaveType] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  // const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [user, setUser] = useState(null);
@@ -52,7 +51,7 @@ export default function LeaveAndHolidaysPage() {
     setLeaveType("");
     setStartDate("");
     setEndDate("");
-    // setReason("");
+    setReason("");
     setMessage("");
   };
   useOutsideClick(modalRef, onClose, showModal);
@@ -67,7 +66,7 @@ export default function LeaveAndHolidaysPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!leaveType || !startDate || !endDate) {
+    if (!leaveType || !startDate || !endDate || !reason) {
       setMessage("Please fill all fields.");
       return;
     }
@@ -81,7 +80,7 @@ export default function LeaveAndHolidaysPage() {
           type: leaveType,
           start_date: startDate,
           end_date: endDate,
-          // reason: reason,
+          reason: reason,
         },
         {
           headers: {
@@ -109,7 +108,6 @@ export default function LeaveAndHolidaysPage() {
   };
 
   const fetchLeaveRecords = async (token) => {
-    setLoading(true);
     try {
       const response = await axios.post(
         `${API}/leaves-status`,
@@ -195,7 +193,7 @@ export default function LeaveAndHolidaysPage() {
             ? "Leave approved successfully!"
             : "Leave rejected successfully!"
         );
-        fetchLeaveRecords(token);
+        fetchLeaveRecords(token); 
       } else {
         toast.error("Failed to process leave action.");
       }
@@ -208,149 +206,23 @@ export default function LeaveAndHolidaysPage() {
     }
   };
 
-  // const className = (status) => {
-  //   if (status === "pending") {
-  //     return "px-4 py-2 text-yellow-600 font-semibold capitalize";
-  //   } else if (status === "rejected") {
-  //     return "px-4 py-2 text-red-600 font-semibold capitalize";
-  //   } else {
-  //     return "px-4 py-2 text-green-600 font-semibold capitalize";
-  //   }
-  // };
-
-  // const [currentPage, setCurrentPage] = useState(1);
-  // const recordsPerPage = 5;
-
-  // const totalPages = Math.ceil(leaveRecords.length / recordsPerPage);
-  // const indexOfLast = currentPage * recordsPerPage;
-  // const indexOfFirst = indexOfLast - recordsPerPage;
-  // const currentRecords = leaveRecords.slice(indexOfFirst, indexOfLast);
-
-  const LeaveTable = ({
-    leaveRecords,
-    isAdmin,
-    handleLeave,
-    isApproving,
-    isRejecting,
-  }) => {
-    const [filteredData, setFilteredData] = useState(leaveRecords);
-    const [search, setSearch] = useState("");
-
-    // Update filtered data when leaveRecords or search changes
-    useEffect(() => {
-      setFilteredData(
-        leaveRecords.filter((record) =>
-          Object.values(record).some((val) =>
-            String(val).toLowerCase().includes(search.toLowerCase())
-          )
-        )
-      );
-    }, [leaveRecords, search]);
-
-    // Status class for styling
-    const className = (status) => {
-      switch (status) {
-        case "approved":
-          return "text-green-600 font-semibold";
-        case "rejected":
-          return "text-red-600 font-semibold";
-        case "pending":
-          return "text-yellow-600 font-semibold";
-        default:
-          return "";
-      }
-    };
-
-    // Define table columns
-    const columns = [
-      {
-        name: "Type",
-        selector: (row) => row.type,
-        sortable: true,
-      },
-      {
-        name: "From",
-        selector: (row) => row.start_date,
-        sortable: true,
-      },
-      {
-        name: "To",
-        selector: (row) => row.end_date,
-        sortable: true,
-      },
-      {
-        name: "Status",
-        selector: (row) => row.status,
-        sortable: true,
-        cell: (row) => (
-          <span className={className(row.status)}>{row.status}</span>
-        ),
-      },
-    ];
-
-    // Add admin-specific columns
-    if (isAdmin) {
-      columns.push(
-        {
-          name: "Employee Name",
-          selector: (row) => row.user_name,
-          sortable: true,
-        },
-        {
-          name: "Employee ID",
-          selector: (row) => row.employee_id,
-          sortable: true,
-        },
-        {
-          name: "Actions",
-          cell: (row) =>
-            row.status === "pending" ? (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleLeave(row.leave_id_encrypted, 1)}
-                  className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
-                  disabled={isApproving || isRejecting}
-                >
-                  {isApproving ? "Approving..." : "Approve"}
-                </button>
-                <button
-                  onClick={() => handleLeave(row.leave_id_encrypted, 0)}
-                  className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                  disabled={isRejecting || isApproving}
-                >
-                  {isRejecting ? "Rejecting..." : "Reject"}
-                </button>
-              </div>
-            ) : null
-        }
-      );
+  const className = (status) => {
+    if (status === "pending") {
+      return "px-4 py-2 text-yellow-600 font-semibold capitalize";
+    } else if (status === "rejected") {
+      return "px-4 py-2 text-red-600 font-semibold capitalize";
+    } else {
+      return "px-4 py-2 text-green-600 font-semibold capitalize";
     }
-
-    return (
-      <div className="p-4">
-        <DataTable
-          columns={columns}
-          data={filteredData}
-          pagination
-          highlightOnHover
-          striped
-          responsive
-          persistTableHead
-          noDataComponent={`No leave ${isAdmin ? "request" : "record"} found`}
-          subHeader
-          subHeaderComponent={
-            <input
-              type="text"
-              placeholder="Search..."
-              className="border px-3 py-2 rounded w-64"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          }
-        />
-      </div>
-    );
   };
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 5;
+
+  const totalPages = Math.ceil(leaveRecords.length / recordsPerPage);
+  const indexOfLast = currentPage * recordsPerPage;
+  const indexOfFirst = indexOfLast - recordsPerPage;
+  const currentRecords = leaveRecords.slice(indexOfFirst, indexOfLast);
 
   if (loading) {
     return (
@@ -403,13 +275,13 @@ export default function LeaveAndHolidaysPage() {
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                 />
-                {/* <textarea
+                <textarea
                   placeholder="Reason"
                   rows="2"
                   className="col-span-2 w-full border px-3 py-2 rounded-lg shadow-sm"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                ></textarea> */}
+                ></textarea>
               </div>
 
               <button
@@ -442,7 +314,7 @@ export default function LeaveAndHolidaysPage() {
               Apply for Leave
             </button>
           )}
-          {/* {leaveRecords.length > recordsPerPage && (
+          {leaveRecords.length > recordsPerPage && (
             <div className="mt-4 flex justify-center space-x-4">
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -464,9 +336,9 @@ export default function LeaveAndHolidaysPage() {
                 Next
               </button>
             </div>
-          )} */}
+          )}
         </div>
-        {/* <table className="min-w-full text-sm">
+        <table className="min-w-full text-sm">
           <thead className="bg-gray-100 text-left">
             <tr>
               <th className="px-4 py-2">Type</th>
@@ -482,7 +354,7 @@ export default function LeaveAndHolidaysPage() {
               )}
             </tr>
           </thead>
-          <tbody>
+          {/* <tbody>
             {leaveRecords.length > 0 ? (
               leaveRecords.map((record, index) => (
                 <tr key={index} className="border-t">
@@ -527,16 +399,54 @@ export default function LeaveAndHolidaysPage() {
                 </td>
               </tr>
             )}
+          </tbody> */}
+          <tbody>
+            {currentRecords.length > 0 ? (
+              currentRecords.map((record, index) => (
+                <tr key={index} className="border-t">
+                  <td className="px-4 py-2">{record.type}</td>
+                  <td className="px-4 py-2">{record.start_date}</td>
+                  <td className="px-4 py-2">{record.end_date}</td>
+                  <td className={className(record.status)}>{record.status}</td>
+                  {isAdmin && (
+                    <>
+                      <td className="px-4 py-2">{record.user_name}</td>
+                      <td className="px-4 py-2">{record.employee_id}</td>
+                      {record.status === "pending" && (
+                        <td className="px-4 py-2">
+                          <button
+                            onClick={() =>
+                              handleLeave(record.leave_id_encrypted, 1)
+                            }
+                            className="bg-green-500 text-white px-3 py-1 rounded mr-2 hover:bg-green-600"
+                            disabled={isApproving}
+                          >
+                            {isApproving ? "Approving..." : "Approve"}
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleLeave(record.leave_id_encrypted, 0)
+                            }
+                            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                            disabled={isRejecting}
+                          >
+                            {isRejecting ? "Rejecting..." : "Reject"}
+                          </button>
+                        </td>
+                      )}
+                    </>
+                  )}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={isAdmin ? 7 : 4} className="px-4 py-2 text-center">
+                  No leave {isAdmin ? "request" : "record"} found
+                </td>
+              </tr>
+            )}
           </tbody>
-         
-        </table> */}
-        <LeaveTable
-          leaveRecords={leaveRecords}
-          isAdmin={isAdmin}
-          handleLeave={handleLeave}
-          isApproving={isApproving}
-          isRejecting={isRejecting}
-        />
+        </table>
       </section>
 
       <div className="bg-yellow-50 p-4 rounded-xl shadow">

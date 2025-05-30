@@ -68,12 +68,12 @@ export default function AttendanceDetailSheet() {
       const data = await response.json();
 
       if (data.status) {
-        setRecords(data.records); // ✅ Set directly from backend
+        setRecords(data.records); 
         setSummary(data.summary.original);
 
         console.log(data.summary.original);
       } else {
-        toast.error(data.message || "Failed to fetch records");
+        // toast.error(data.message || "Failed to fetch records");
         setRecords([]);
         setSummary("");
       }
@@ -198,10 +198,19 @@ export default function AttendanceDetailSheet() {
             id="date"
             className="border rounded px-2 py-1 text-gray-700"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            // onChange={(e) => setSelectedDate(e.target.value)}
+               onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedDate(value);
+
+                  if (value) {
+                    const [year, month] = value.split("-");
+                    fetchRecords(parseInt(year), parseInt(month),token);
+                  }
+                }}
             onClick={handleClick}
           />
-          <button
+          {/* <button
             className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
             onClick={() => {
               if (selectedDate) {
@@ -222,7 +231,7 @@ export default function AttendanceDetailSheet() {
             }}
           >
             Clear
-          </button>
+          </button> */}
         </div>
       </div>
       <div className="max-w-6xl mx-auto flex flex-col gap-8">

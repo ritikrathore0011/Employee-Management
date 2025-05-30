@@ -227,8 +227,9 @@ export default function ProfilePage() {
         {isAdmin && (
           <button
             type="submit"
-            onClick={handleSubmit}
+            // onClick={handleSubmit}
             className="bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-700 transition"
+            disabled = {isSaving}
           >
             {isSaving ? "Saving..." : "Save Changes"}
           </button>
